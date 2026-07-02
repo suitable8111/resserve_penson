@@ -277,18 +277,52 @@ def build_report(available, waitlist, show_waitlist):
     return "\n".join(lines)
 
 
-def report(available, waitlist, args, bot_token, channel_id):
-    """봇 토큰으로 채널에 예약가능 현황을 게시한다(매 실행마다 = 주기 보고)."""
-    if args.only_available and not available:
-        print("예약가능 없음 — --only-available 설정으로 게시 생략.")
-        return
-    content = build_report(available, waitlist, args.waitlist)
+def build_new_alert(new_slots):
+    """새로 열린 예약가능 자리만 강조한 알림 메시지."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    lines = ["@here 🏕️ **숲속의 집 예약가능 자리 발견!**  (%s)" % now, ""]
+    for it in new_slots:
+        lines.append("🟢 **%s**  —  %s" % (fmt_date(it["date"]), it["room"]))
+    lines.append("")
+    lines.append("⚡ 바로 예약: %s" % STATUS_PAGE)
+    return "\n".join(lines)
+
+
+def _post_or_preview(content, bot_token, channel_id, ok_msg):
     if bot_token and channel_id:
         send_discord_bot(bot_token, channel_id, content)
-        print("📨 디스코드 봇 게시 완료 (채널 %s, 예약가능 %d건)" % (channel_id, len(available)))
+        print(ok_msg)
     else:
         print("⚠️  DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID 미설정 — 게시 생략. 미리보기:\n")
         print(content)
+
+
+def report(available, waitlist, args, bot_token, channel_id):
+    """봇 토큰으로 채널에 예약가능 현황을 게시한다.
+
+    --new-only : 직전 조회에 없던 '새' 예약가능만 1회 게시(상태파일 비교). 예약가능
+                 할 때만, 그리고 자리마다 한 번만 알린다. 자리가 사라졌다 다시
+                 열리면 다시 알린다.
+    (기본)     : 매 실행마다 현재 현황 전체를 게시(--only-available 로 빈 보고 생략).
+    """
+    if args.new_only:
+        seen = load_state()
+        current = {"%s|%s" % (it["date"], it["room"]): it for it in available}
+        new_keys = sorted(k for k in current if k not in seen)
+        save_state(current.keys())
+        if not new_keys:
+            print("변동 없음 (새 예약가능 없음) — 게시 생략.")
+            return
+        new_slots = [current[k] for k in new_keys]
+        _post_or_preview(build_new_alert(new_slots), bot_token, channel_id,
+                         "📨 봇 게시: 새 예약가능 %d건 알림" % len(new_slots))
+        return
+
+    if args.only_available and not available:
+        print("예약가능 없음 — --only-available 설정으로 게시 생략.")
+        return
+    _post_or_preview(build_report(available, waitlist, args.waitlist), bot_token, channel_id,
+                     "📨 디스코드 봇 게시 완료 (채널 %s, 예약가능 %d건)" % (channel_id, len(available)))
 
 
 def run_once(args, webhook, bot_token, channel_id):
@@ -319,6 +353,8 @@ def main():
                    help="봇 토큰으로 채널에 예약가능 현황 게시(--loop 3600 이면 1시간마다 보고)")
     p.add_argument("--only-available", action="store_true",
                    help="--report 시 예약가능이 있을 때만 게시(없으면 생략)")
+    p.add_argument("--new-only", action="store_true",
+                   help="--report 시 '새로 열린' 예약가능만 1회 게시(상태파일 비교, 스팸 방지)")
     p.add_argument("--notify", action="store_true",
                    help="웹훅으로 '새' 예약가능만 알림(상태파일 비교, --report 와 독립)")
     p.add_argument("--loop", type=int, metavar="SEC", help="주어진 초 간격으로 반복 실행")

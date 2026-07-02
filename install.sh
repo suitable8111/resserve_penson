@@ -6,7 +6,7 @@
 #
 set -euo pipefail
 
-INTERVAL="${1:-3600}"
+INTERVAL="${1:-120}"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENVFILE="$APP_DIR/foresttrip.env"
 SERVICE="/etc/systemd/system/foresttrip-monitor.service"
@@ -44,7 +44,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
 EnvironmentFile=$ENVFILE
-ExecStart=$APP_DIR/.venv/bin/python $APP_DIR/foresttrip_monitor.py --report --loop $INTERVAL
+ExecStart=$APP_DIR/.venv/bin/python $APP_DIR/foresttrip_monitor.py --report --new-only --loop $INTERVAL
 Restart=on-failure
 RestartSec=60
 

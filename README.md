@@ -5,8 +5,9 @@
 
 두 가지 알림 방식을 지원한다.
 
-- **봇 보고(`--report`)**: 디스코드 **봇 토큰**으로 채널에 현재 예약가능 현황을 게시.
-  `--loop 3600` 과 함께 쓰면 **1시간마다 보고**.
+- **봇 보고(`--report`)**: 디스코드 **봇 토큰**으로 채널에 게시.
+  - `--new-only` : **새로 열린 예약가능만 1회** 알림(상태파일 비교, 스팸 없음). **실시간 감시용 추천.**
+  - (기본) : 매 실행마다 현황 전체 게시(현황판). `--only-available` 로 빈 보고 생략.
 - **웹훅 알림(`--notify`)**: **웹훅**으로 '새로 열린' 예약가능 자리만 알림(상태파일 비교, 중복 방지).
 
 ## 동작 방식
@@ -45,9 +46,12 @@ export DISCORD_BOT_TOKEN="봇토큰"
 export DISCORD_CHANNEL_ID="채널ID"
 python foresttrip_monitor.py --report
 
-# 4) [봇] 1시간마다 채널에 보고
+# 4) [봇] '새로 열린' 예약가능만 1회 알림 (추천 — 스팸 없음, 실시간 감시)
+python foresttrip_monitor.py --report --new-only --loop 120
+
+# 4-1) [봇] 매 실행마다 현재 현황 전체 보고 (현황판 용도)
 python foresttrip_monitor.py --report --loop 3600
-#   예약가능이 있을 때만 보고하려면(빈 보고 생략):
+#      예약가능 있을 때만 보고(빈 보고 생략):
 python foresttrip_monitor.py --report --only-available --loop 3600
 
 # 5) [웹훅] '새' 예약가능 자리만 즉시 알림 (봇과 독립적으로 병행 가능)
@@ -100,17 +104,23 @@ python3 -m venv .venv
 > venv 없이 쓰려면 `sudo apt install python3-requests` 또는
 > `pip install --break-system-packages -r requirements.txt` 도 가능하다.
 
-### 2-A) systemd (권장 — 상주 프로세스로 1시간마다 봇 보고)
+### 2-A) systemd (권장) — `install.sh` 로 자동 등록
 
-`systemd/foresttrip-monitor.service` 의 `User`, `WorkingDirectory`,
-`DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID` 를 서버에 맞게 수정한 뒤:
+`install.sh` 가 현재 사용자/절대경로/비밀파일을 자동 반영해 유닛을 만든다.
+기본 실행은 **2분 간격 + `--report --new-only`(새 자리만 1회 알림)**.
 
 ```bash
-sudo cp systemd/foresttrip-monitor.service /etc/systemd/system/
-sudo systemctl daemon-reload
+cd ~/Document/python/resserve_penson
+./install.sh                 # 1회차: venv + foresttrip.env 템플릿 생성
+nano foresttrip.env          # DISCORD_BOT_TOKEN, DISCORD_CHANNEL_ID 입력
+./install.sh                 # 2회차: 유닛 등록 (간격 바꾸려면 ./install.sh 300)
 sudo systemctl enable --now foresttrip-monitor.service
-journalctl -u foresttrip-monitor -f      # 로그 확인
+journalctl -u foresttrip-monitor -f
 ```
+
+> 유닛을 직접 수정하려면 `systemd/foresttrip-monitor.service` 의 `User`,
+> `WorkingDirectory`, `DISCORD_BOT_TOKEN`, `DISCORD_CHANNEL_ID`, `ExecStart` 경로를
+> 서버에 맞게 고친 뒤 `/etc/systemd/system/` 에 복사한다.
 
 ### 2-B) cron (1시간마다 단발 실행)
 
