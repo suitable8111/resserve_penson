@@ -10,7 +10,8 @@ User=youruser
 WorkingDirectory=/opt/resserve_penson
 Environment=DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXX/YYY
 # 5분(300초) 간격으로 반복 조회 + 신규 예약가능 알림
-ExecStart=/usr/bin/python3 /opt/resserve_penson/foresttrip_monitor.py --notify --loop 300
+# (venv 사용을 권장. 아래는 /opt/resserve_penson/.venv 기준)
+ExecStart=/opt/resserve_penson/.venv/bin/python /opt/resserve_penson/foresttrip_monitor.py --notify --loop 300
 Restart=on-failure
 RestartSec=30
 

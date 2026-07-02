@@ -56,8 +56,18 @@ python foresttrip_monitor.py --notify --loop 300
 ```bash
 git clone git@github.com:suitable8111/resserve_penson.git /opt/resserve_penson
 cd /opt/resserve_penson
-pip3 install -r requirements.txt
+
+# 최신 데비안/우분투는 시스템 pip 설치가 막혀 있으므로(PEP 668) venv 사용
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 실행 테스트
+.venv/bin/python foresttrip_monitor.py --waitlist
 ```
+
+> `error: externally-managed-environment` 가 나오면 위처럼 venv 를 쓰면 된다.
+> venv 없이 쓰려면 `sudo apt install python3-requests` 또는
+> `pip install --break-system-packages -r requirements.txt` 도 가능하다.
 
 ### 2-A) systemd (권장 — 상주 프로세스로 5분마다 반복)
 
@@ -74,7 +84,7 @@ journalctl -u foresttrip-monitor -f      # 로그 확인
 ### 2-B) cron (5분마다 단발 실행)
 
 ```cron
-*/5 * * * * cd /opt/resserve_penson && DISCORD_WEBHOOK_URL="https://..." /usr/bin/python3 foresttrip_monitor.py --notify >> monitor.log 2>&1
+*/5 * * * * cd /opt/resserve_penson && DISCORD_WEBHOOK_URL="https://..." /opt/resserve_penson/.venv/bin/python foresttrip_monitor.py --notify >> monitor.log 2>&1
 ```
 
 > systemd 방식은 `--loop` 로 프로세스가 계속 떠 있고, cron 방식은 매번 새로 실행된다.
