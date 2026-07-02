@@ -1,0 +1,18 @@
+[Unit]
+Description=국립용지봉자연휴양림 숲속의 집 예약 모니터 (Discord 알림)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 아래 경로/사용자/웹훅을 서버 환경에 맞게 수정하세요.
+User=youruser
+WorkingDirectory=/opt/resserve_penson
+Environment=DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXX/YYY
+# 5분(300초) 간격으로 반복 조회 + 신규 예약가능 알림
+ExecStart=/usr/bin/python3 /opt/resserve_penson/foresttrip_monitor.py --notify --loop 300
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

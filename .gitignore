@@ -1,0 +1,12 @@
+# 런타임 상태/로그
+.foresttrip_state.json
+*.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
