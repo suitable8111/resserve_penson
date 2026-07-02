@@ -2,6 +2,9 @@
 .foresttrip_state.json
 *.log
 
+# 비밀값 (토큰/채널ID) — 커밋 금지
+foresttrip.env
+
 # python
 __pycache__/
 *.pyc
