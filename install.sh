@@ -44,7 +44,9 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
 EnvironmentFile=$ENVFILE
-ExecStart=$APP_DIR/.venv/bin/python $APP_DIR/foresttrip_monitor.py --report --new-only --loop $INTERVAL
+# 로그가 journal 에 실시간으로 찍히도록 출력 버퍼링 끔
+Environment=PYTHONUNBUFFERED=1
+ExecStart=$APP_DIR/.venv/bin/python -u $APP_DIR/foresttrip_monitor.py --report --new-only --loop $INTERVAL
 Restart=on-failure
 RestartSec=60
 

@@ -11,9 +11,11 @@ WorkingDirectory=/home/youruser/Document/python/resserve_penson
 # 디스코드 봇 토큰 + 보고할 채널 ID
 Environment=DISCORD_BOT_TOKEN=여기에_봇_토큰
 Environment=DISCORD_CHANNEL_ID=여기에_채널ID
-# 1시간(3600초)마다 채널에 예약가능 현황 보고 (venv 사용)
-ExecStart=/home/youruser/Document/python/resserve_penson/.venv/bin/python \
-          /home/youruser/Document/python/resserve_penson/foresttrip_monitor.py --report --loop 3600
+# 로그가 journal 에 실시간으로 찍히도록 출력 버퍼링 끔
+Environment=PYTHONUNBUFFERED=1
+# 2분(120초)마다 조회, '새로 열린' 예약가능만 1회 알림 (venv 사용)
+ExecStart=/home/youruser/Document/python/resserve_penson/.venv/bin/python -u \
+          /home/youruser/Document/python/resserve_penson/foresttrip_monitor.py --report --new-only --loop 120
 Restart=on-failure
 RestartSec=60
 
