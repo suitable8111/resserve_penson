@@ -243,7 +243,55 @@ def notify(available, webhook):
     save_state(current.keys())
 
 
-def run_once(args, webhook):
+def send_discord_bot(token, channel_id, content):
+    """봇 토큰으로 채널에 메시지를 게시한다(Discord REST API).
+
+    게이트웨이(websocket) 없이 REST 만 사용한다. 봇이 해당 서버에 초대되어 있고
+    채널에 '메시지 보내기' 권한이 있으면 동작한다.
+    """
+    url = "https://discord.com/api/v10/channels/%s/messages" % channel_id
+    headers = {
+        "Authorization": "Bot %s" % token,
+        "Content-Type": "application/json",
+        "User-Agent": "resserve-penson-monitor (https://github.com/suitable8111/resserve_penson, 1.0)",
+    }
+    r = requests.post(url, json={"content": content[:2000]}, headers=headers, timeout=15)
+    r.raise_for_status()
+
+
+def build_report(available, waitlist, show_waitlist):
+    """채널에 게시할 예약가능 보고 메시지를 만든다."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    lines = ["📊 **국립용지봉자연휴양림 · 숲속의 집 예약가능 현황**  (%s)" % now, ""]
+    if available:
+        lines.append("🟢 **예약가능 %d건**" % len(available))
+        for it in available:
+            lines.append("• %s  —  %s" % (fmt_date(it["date"]), it["room"]))
+    else:
+        lines.append("🟢 예약가능: **없음**")
+    if show_waitlist and waitlist:
+        lines.append("")
+        lines.append("🔵 대기가능 %d건 (상세는 서버 로그 참고)" % len(waitlist))
+    lines.append("")
+    lines.append("예약 바로가기: %s" % STATUS_PAGE)
+    return "\n".join(lines)
+
+
+def report(available, waitlist, args, bot_token, channel_id):
+    """봇 토큰으로 채널에 예약가능 현황을 게시한다(매 실행마다 = 주기 보고)."""
+    if args.only_available and not available:
+        print("예약가능 없음 — --only-available 설정으로 게시 생략.")
+        return
+    content = build_report(available, waitlist, args.waitlist)
+    if bot_token and channel_id:
+        send_discord_bot(bot_token, channel_id, content)
+        print("📨 디스코드 봇 게시 완료 (채널 %s, 예약가능 %d건)" % (channel_id, len(available)))
+    else:
+        print("⚠️  DISCORD_BOT_TOKEN / DISCORD_CHANNEL_ID 미설정 — 게시 생략. 미리보기:\n")
+        print(content)
+
+
+def run_once(args, webhook, bot_token, channel_id):
     session, csrf, months = new_session()
     if not months:
         # 페이지에서 월 목록을 못 얻으면 현재월부터 3개월 계산
@@ -256,26 +304,33 @@ def run_once(args, webhook):
             if m > 12:
                 m, y = 1, y + 1
     available, waitlist = collect(session, csrf, months)
+    print_report(available, waitlist, args.waitlist)
+    if args.report:
+        report(available, waitlist, args, bot_token, channel_id)
     if args.notify:
-        print_report(available, waitlist, args.waitlist)
         notify(available, webhook)
-    else:
-        print_report(available, waitlist, args.waitlist)
     return available
 
 
 def main():
     p = argparse.ArgumentParser(description="국립용지봉자연휴양림 숲속의 집 예약 모니터")
     p.add_argument("--waitlist", action="store_true", help="대기가능 현황도 함께 출력")
-    p.add_argument("--notify", action="store_true", help="새 예약가능 발견 시 디스코드 알림")
+    p.add_argument("--report", action="store_true",
+                   help="봇 토큰으로 채널에 예약가능 현황 게시(--loop 3600 이면 1시간마다 보고)")
+    p.add_argument("--only-available", action="store_true",
+                   help="--report 시 예약가능이 있을 때만 게시(없으면 생략)")
+    p.add_argument("--notify", action="store_true",
+                   help="웹훅으로 '새' 예약가능만 알림(상태파일 비교, --report 와 독립)")
     p.add_argument("--loop", type=int, metavar="SEC", help="주어진 초 간격으로 반복 실행")
     args = p.parse_args()
 
     webhook = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    bot_token = os.environ.get("DISCORD_BOT_TOKEN", "").strip()
+    channel_id = os.environ.get("DISCORD_CHANNEL_ID", "").strip()
 
     def cycle():
         try:
-            run_once(args, webhook)
+            run_once(args, webhook, bot_token, channel_id)
         except SessionExpired as e:
             print("❌ 세션/접근 오류: %s" % e, file=sys.stderr)
         except requests.RequestException as e:

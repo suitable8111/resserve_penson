@@ -1,19 +1,21 @@
 [Unit]
-Description=국립용지봉자연휴양림 숲속의 집 예약 모니터 (Discord 알림)
+Description=국립용지봉자연휴양림 숲속의 집 예약 모니터 (Discord 봇 1시간 보고)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-# 아래 경로/사용자/웹훅을 서버 환경에 맞게 수정하세요.
+# 아래 값들을 서버 환경에 맞게 수정하세요.
 User=youruser
-WorkingDirectory=/opt/resserve_penson
-Environment=DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXX/YYY
-# 5분(300초) 간격으로 반복 조회 + 신규 예약가능 알림
-# (venv 사용을 권장. 아래는 /opt/resserve_penson/.venv 기준)
-ExecStart=/opt/resserve_penson/.venv/bin/python /opt/resserve_penson/foresttrip_monitor.py --notify --loop 300
+WorkingDirectory=/home/youruser/Document/python/resserve_penson
+# 디스코드 봇 토큰 + 보고할 채널 ID
+Environment=DISCORD_BOT_TOKEN=여기에_봇_토큰
+Environment=DISCORD_CHANNEL_ID=여기에_채널ID
+# 1시간(3600초)마다 채널에 예약가능 현황 보고 (venv 사용)
+ExecStart=/home/youruser/Document/python/resserve_penson/.venv/bin/python \
+          /home/youruser/Document/python/resserve_penson/foresttrip_monitor.py --report --loop 3600
 Restart=on-failure
-RestartSec=30
+RestartSec=60
 
 [Install]
 WantedBy=multi-user.target
